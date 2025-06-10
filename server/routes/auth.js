@@ -1,19 +1,22 @@
+// server/routes/auth.js
+
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library.js';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
-/* helper ---------------------------------------------------------- */
+/** Helper to sign a JWT with { uid } payload **/
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES || '7d',
   });
 }
 
-/* ---------------------  /signup  -------------------------------- */
+/** POST /api/auth/signup **/
 router.post('/signup', async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -21,9 +24,11 @@ router.post('/signup', async (req, res, next) => {
     const user = await prisma.user.create({
       data: { email, password: hash },
     });
+
     const token = signToken({ uid: user.id });
+    //   ←–– Make sure this name is "jwt"
     res
-      .cookie('token', token, {
+      .cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -31,11 +36,15 @@ router.post('/signup', async (req, res, next) => {
       })
       .json({ id: user.id, email: user.email });
   } catch (err) {
+    // handle duplicate‐email error
+    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
+      return res.status(409).json({ message: 'Email already registered' });
+    }
     next(err);
   }
 });
 
-/* ---------------------  /login  --------------------------------- */
+/** POST /api/auth/login **/
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -46,8 +55,9 @@ router.post('/login', async (req, res, next) => {
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
     const token = signToken({ uid: user.id });
+    //   ←–– Again, use "jwt" (not "token")
     res
-      .cookie('token', token, {
+      .cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -59,9 +69,16 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-/* ---------------------  /logout  -------------------------------- */
-router.post('/logout', (req, res) => {
-  res.clearCookie('token').json({ message: 'logged out' });
+/** POST /api/auth/logout **/
+router.post('/logout', (_req, res) => {
+  // Clear "jwt" cookie (sameName + sameSite + same secure flag)
+  res
+    .clearCookie('jwt', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    })
+    .json({ message: 'logged out' });
 });
 
 export default router;

@@ -18,35 +18,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
 
-      - name: Install deps
+  # 🔥 NEW: run migrations + seed against Cloud SQL
+  db-seed:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v1
+
+      - name: Download Cloud SQL Proxy
+        run: |
+          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.11.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+
+      - name: Start proxy in background
+        run: |
+          INSTANCE="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-db"
+          ./cloud-sql-proxy --port=5432 $INSTANCE &
+          echo "Proxy PID $!" > proxy.pid
+          sleep 10
+
+      - name: Install deps (needed for bcrypt)
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Run migrate + seed
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          npx prisma migrate deploy --schema=prisma/schema.prisma
+          node prisma/seed.js
 
-      - name: Build
-        run: npm run build
+      - name: Stop proxy
+        if: always()
+        run: kill $(cat proxy.pid)
 
   deploy:
-    needs: build-test
+    needs: [build-test, db-seed]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
       - id: auth
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-
       - uses: google-github-actions/setup-gcloud@v1
 
       - name: Docker login

@@ -18,19 +18,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
+      
       - name: Install dependencies
         run: npm ci
-
+      
       - name: Lint
         run: npm run lint
-
+      
       - name: Build
         run: npm run build
 
@@ -41,19 +41,19 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-
+      
       - uses: google-github-actions/setup-gcloud@v1
-
+      
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker --quiet "${{ env.REGION }}-docker.pkg.dev"
-
+      
       - name: Build and push Docker image
         run: |
           set -e
@@ -61,7 +61,7 @@ jobs:
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-
+      
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE }} \
@@ -70,5 +70,6 @@ jobs:
             --platform=managed \
             --allow-unauthenticated \
             --add-cloudsql-instances="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-prod-db" \
-            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }},OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }},JWT_SECRET=${{ secrets.JWT_SECRET }},JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}" \
+            --vpc-connector=projects/${{ env.PROJECT_ID }}/locations/${{ env.REGION }}/connectors/pantrypal-connector \
+            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }},OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }},JWT_SECRET=${{ secrets.JWT_SECRET }},JWT_EXPIRES=${{ secrets.JWT_EXPIRES }},REDIS_URL=${{ secrets.REDIS_URL }}" \
             --quiet

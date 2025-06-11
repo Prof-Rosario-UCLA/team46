@@ -34,5 +34,5 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 4000
 
-# 3. On startup: run migrations, then launch the server
-CMD ["sh", "-c", "npx prisma migrate deploy && node server/index.js"]
+# 3. On startup: run migrations, seed the DB, then launch the server
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node server/index.js"]

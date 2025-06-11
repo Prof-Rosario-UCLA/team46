@@ -6,6 +6,7 @@ export default function FastAddModal({ isOpen, onClose, onItemAdded }) {
   const videoRef = useRef(null);
   const codeReaderRef = useRef(null);
   const csrfRef = useRef(null);
+  const scanningRef = useRef(false);
 
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
@@ -36,36 +37,68 @@ export default function FastAddModal({ isOpen, onClose, onItemAdded }) {
     setUpc('');
     setQuantity(1);
     setExpiresAt('');
+    scanningRef.current = true;
 
     const codeReader = new BrowserMultiFormatReader();
     codeReaderRef.current = codeReader;
 
     const stopScanning = () => {
       setScanning(false);
-      if (codeReaderRef.current?.reset) codeReaderRef.current.reset();
+      scanningRef.current = false;
+      if (codeReaderRef.current?.reset) {
+        try {
+          codeReaderRef.current.reset();
+        } catch (e) {
+          console.warn('Error resetting code reader:', e);
+        }
+      }
       codeReaderRef.current = null;
 
       if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
-        videoRef.current.srcObject = null;
+        try {
+          videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+          videoRef.current.srcObject = null;
+        } catch (e) {
+          console.warn('Error stopping video tracks:', e);
+        }
       }
     };
 
     BrowserMultiFormatReader.listVideoInputDevices()
       .then((devices) => {
-        if (!isOpen) return stopScanning();
+        if (!isOpen || !scanningRef.current) return stopScanning();
 
         let lastId = devices.length ? devices[devices.length - 1].deviceId : null;
 
         const callback = (result, err) => {
+          // Stop processing if we're no longer scanning or modal is closed
+          if (!scanningRef.current || !isOpen) {
+            return;
+          }
+
           if (result && !upc) {
             stopScanning();
             setUpc(result.getText());
             lookupProduct(result.getText());
-          } else if (err && !err.name.startsWith('NotFoundException')) {
-            console.error(err);
-            setError('Error accessing camera or scanning');
-            stopScanning();
+          } else if (err) {
+            // More comprehensive error filtering to prevent console spam
+            const errorName = err.name || '';
+            const errorMessage = err.message || err.toString();
+            
+            // Filter out common "not found" errors that are expected during scanning
+            const isExpectedError = 
+              errorName.includes('NotFound') ||
+              errorName.includes('NotFoundException') ||
+              errorMessage.includes('No MultiFormat Readers') ||
+              errorMessage.includes('could not detect') ||
+              errorMessage.includes('not found');
+
+            if (!isExpectedError) {
+              console.error('Barcode scanning error:', err);
+              setError('Error accessing camera or scanning');
+              stopScanning();
+            }
+            // For expected errors, we silently continue scanning
           }
         };
 
@@ -75,21 +108,35 @@ export default function FastAddModal({ isOpen, onClose, onItemAdded }) {
           } else {
             codeReader.decodeFromVideoDevice(undefined, videoRef.current, callback);
           }
-        } catch {
+        } catch (scanError) {
+          console.error('Error starting barcode scanner:', scanError);
           setError('Unable to access camera');
           stopScanning();
         }
       })
-      .catch(() => {
+      .catch((deviceError) => {
+        console.error('Error listing video devices:', deviceError);
         setError('Unable to access camera');
         setScanning(false);
+        scanningRef.current = false;
       });
 
     return () => {
-      if (codeReaderRef.current?.reset) codeReaderRef.current.reset();
+      scanningRef.current = false;
+      if (codeReaderRef.current?.reset) {
+        try {
+          codeReaderRef.current.reset();
+        } catch (e) {
+          console.warn('Error in cleanup reset:', e);
+        }
+      }
       if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
-        videoRef.current.srcObject = null;
+        try {
+          videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+          videoRef.current.srcObject = null;
+        } catch (e) {
+          console.warn('Error in cleanup video stop:', e);
+        }
       }
       setScanning(false);
     };
@@ -168,16 +215,25 @@ export default function FastAddModal({ isOpen, onClose, onItemAdded }) {
     }
   }
 
+  const handleClose = () => {
+    scanningRef.current = false;
+    if (codeReaderRef.current?.reset) {
+      try {
+        codeReaderRef.current.reset();
+      } catch (e) {
+        console.warn('Error resetting on close:', e);
+      }
+    }
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg max-w-md w-full p-4 relative">
         <button
-          onClick={() => {
-            codeReaderRef.current?.reset();
-            onClose();
-          }}
+          onClick={handleClose}
           className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 focus:ring-2 focus:ring-blue-600"
         >
           ✕

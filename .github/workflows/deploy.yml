@@ -70,5 +70,5 @@ jobs:
             --platform=managed \
             --allow-unauthenticated \
             --add-cloudsql-instances="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-db" \
-            --set-env-vars=DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+            --set-env-vars=DATABASE_URL='${{ secrets.DATABASE_URL }}',JWT_SECRET='${{ secrets.JWT_SECRET }}',JWT_EXPIRES='${{ secrets.JWT_EXPIRES }}',REDIS_URL='${{ secrets.REDIS_URL }}',OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}' \
             --quiet

@@ -49,10 +49,11 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v1
 
-      - name: Docker login
+      - name: Configure Docker to use gcloud for Artifact Registry
         run: |
-          REGISTRY="${{ env.REGION }}-docker.pkg.dev"
-          echo "${{ secrets.GCP_SA_KEY }}" | docker login -u _json_key --password-stdin "https://$REGISTRY"
+          echo "${{ secrets.GCP_SA_KEY }}" > $HOME/sa-key.json
+          gcloud auth activate-service-account --key-file=$HOME/sa-key.json
+          gcloud auth configure-docker --quiet "${{ env.REGION }}-docker.pkg.dev"
 
       - name: Docker build & push
         run: |

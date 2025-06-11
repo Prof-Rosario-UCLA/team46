@@ -16,7 +16,7 @@ export default function LoginForm({ onLoginSuccess }) {
         { withCredentials: true }
       );
       onLoginSuccess();
-    } catch (err) {
+    } catch {
       setError('Invalid email or password');
     }
   }

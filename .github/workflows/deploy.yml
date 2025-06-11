@@ -42,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Authenticate gcloud with your SA key (no file-echo needed)
       - id: auth
         uses: google-github-actions/auth@v1
         with:
@@ -49,10 +50,9 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v1
 
-      - name: Configure Docker to use gcloud for Artifact Registry
+      # Configure Docker to use those same gcloud creds for Artifact Registry
+      - name: Configure Docker credential helper
         run: |
-          echo "${{ secrets.GCP_SA_KEY }}" > $HOME/sa-key.json
-          gcloud auth activate-service-account --key-file=$HOME/sa-key.json
           gcloud auth configure-docker --quiet "${{ env.REGION }}-docker.pkg.dev"
 
       - name: Docker build & push

@@ -1,37 +1,106 @@
-// eslint.config.js – ESLint Flat Config for React + Prettier
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { FlatCompat } from '@eslint/eslintrc';
+import js from '@eslint/js';
+import globals from 'globals';
+import reactPlugin from 'eslint-plugin-react';
 
-import js from "@eslint/js";
-import pluginReact from "eslint-plugin-react";
-import globals from "globals";
-import prettier from "eslint-config-prettier";
-import { defineConfig } from "eslint/config";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export default defineConfig([
-  // JavaScript core rules
-  js.configs.recommended,
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+});
 
-  // React flat preset
+export default [
+  ...compat.extends(
+    'eslint:recommended',
+    'plugin:n/recommended'
+  ),
+
+  { ignores: ['node_modules/**', 'dist/**'] },
+
+  // CommonJS files (prisma scripts)
   {
-    ...pluginReact.configs.flat.recommended,
-    settings: {
-      react: {
-        version: "detect", // Automatically detect React version
+    files: ['server/**/*.js', 'prisma/seed.js'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
       },
     },
     rules: {
-      // For React 17+, these are not needed
-      "react/react-in-jsx-scope": "off",
-      "react/jsx-uses-react": "off",
+      'n/no-extraneous-import': 'off',
+      'n/no-unsupported-features/node-builtins': 'off',
+      'n/no-process-exit': 'off',
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
 
-  // Browser globals (window, document, etc.)
+  // Server ES modules
   {
-    languageOptions: { globals: globals.browser },
+    files: ['server/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      'n/no-extraneous-import': 'off', // Disable for server dependencies
+      'n/no-unsupported-features/node-builtins': 'off',
+    },
   },
 
-  // Disable style rules that clash with Prettier – must be last
+  // Browser files (service workers)
   {
-    ...prettier,
+    files: ['public/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.serviceworker,
+      },
+    },
+    rules: {
+      'n/no-unsupported-features/node-builtins': 'off',
+    },
   },
-]);
+
+  // React client (JSX)
+  {
+    files: ['src/**/*.{js,jsx}'],
+    plugins: {
+      react: reactPlugin,
+    },
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+      },
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+    },
+    settings: { react: { version: 'detect' } },
+    rules: {
+      
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
+      'no-unused-vars': ['warn', { 
+    argsIgnorePattern: '^_',
+    varsIgnorePattern: '^_',
+    caughtErrorsIgnorePattern: '^_' 
+  }],
+      'n/no-unsupported-features/node-builtins': 'off', // Disable Node checks in browser code
+      'n/no-missing-import': 'off' // Handled by bundler
+    },
+  },
+];

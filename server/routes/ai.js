@@ -71,7 +71,7 @@ ${useSpoiling
     let recipe;
     try {
       recipe = JSON.parse(text);
-    } catch (_err) {
+    } catch{
       return res
         .status(500)
         .json({ error: "Invalid JSON from AI", raw: text });

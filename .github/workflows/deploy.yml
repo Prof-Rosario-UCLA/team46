@@ -40,33 +40,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1️⃣ Authenticate to Google Cloud
+      # 1️⃣ Authenticate gcloud with the service-account JSON
       - id: auth
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # 2️⃣ Install gcloud + Docker auth for Artifact Registry
       - uses: google-github-actions/setup-gcloud@v1
-      - run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-        name: Configure Docker auth
+
+      # 🔎 Debug — show active account/project
+      - name: Debug gcloud account
+        run: |
+          gcloud config list account project
+          gcloud auth list
+
+      # 2️⃣ Explicit Docker login to Artifact Registry using the same JSON key
+      - name: Docker login (Artifact Registry)
+        run: |
+          REGISTRY="${{ env.REGION }}-docker.pkg.dev"
+          echo '${{ secrets.GCP_SA_KEY }}' | \
+            docker login -u _json_key --password-stdin "https://$REGISTRY"
 
       # 3️⃣ Build & push the image
-      - run: |
+      - name: Docker build & push
+        run: |
           set -e
           IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ env.IMAGE_TAG }}"
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV   # share with next step
+          echo "IMAGE=$IMAGE"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
-        name: Docker build & push
 
-      # 4️⃣ Deploy to Cloud Run with the *exact* image we just pushed
-      - run: |
+      # 4️⃣ Deploy the pushed image to Cloud Run
+      - name: Deploy to Cloud Run
+        run: |
           gcloud run deploy ${{ env.SERVICE }} \
-            --image="$IMAGE" \
+            --image="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ env.IMAGE_TAG }}" \
             --region="${{ env.REGION }}" \
             --platform=managed \
             --allow-unauthenticated \
             --quiet
-        name: Deploy to Cloud Run

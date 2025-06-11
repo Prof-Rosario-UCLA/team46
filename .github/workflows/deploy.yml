@@ -25,12 +25,14 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci
-        name: Install deps
-      - run: npm run lint
-        name: Lint
-      - run: npm run build
-        name: Build
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
 
   deploy:
     needs: build-test
@@ -40,7 +42,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1️⃣ Authenticate gcloud with the service-account JSON
       - id: auth
         uses: google-github-actions/auth@v1
         with:
@@ -48,31 +49,26 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v1
 
-      # 🔎 Debug — show active account/project (now harmless)
-      - name: Debug gcloud account
-        run: |
-          echo "Account:  $(gcloud config get-value account)"
-          echo "Project:  $(gcloud config get-value project)"
-          gcloud auth list
-
-      # 2️⃣ Explicit Docker login to Artifact Registry
-      - name: Docker login (Artifact Registry)
+      - name: Docker login
         run: |
           REGISTRY="${{ env.REGION }}-docker.pkg.dev"
-          echo '${{ secrets.GCP_SA_KEY }}' | \
-            docker login -u _json_key --password-stdin "https://$REGISTRY"
+          echo '${{ secrets.GCP_SA_KEY }}' | docker login -u _json_key --password-stdin "https://$REGISTRY"
 
-      # 3️⃣ Build & push
       - name: Docker build & push
         run: |
           set -e
           IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ env.IMAGE_TAG }}"
-          echo "IMAGE=$IMAGE"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      # 4️⃣ Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ env.SERVICE }} --image="$IMAGE" --region="${{ env.REGION }}" --platform=managed --allow-unauthenticated --add-cloudsql-instances="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-db" --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" --quiet
-
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image="$IMAGE" \
+            --region="${{ env.REGION }}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --add-cloudsql-instances="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-db" \
+            --set-env-vars=DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+            --quiet

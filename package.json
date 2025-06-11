@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev:client": "vite",
+    "build": "npm run build:client",
     "build:client": "vite build",
     "dev:server": "nodemon server/index.js",
     "start": "NODE_ENV=production node server/index.js",

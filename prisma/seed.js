@@ -22,7 +22,7 @@ async function main() {
   console.log('User IDs:', user.id, pantryUser.id);
 
   const protein = await prisma.product.upsert({
-    where: { upc: '00015800069828' },
+    where: { upc: '811620020633' },
     update: {},
     create: { 
       upc: '811620020633', 

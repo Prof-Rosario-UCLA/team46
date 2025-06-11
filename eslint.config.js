@@ -50,7 +50,8 @@ export default [
       },
     },
     rules: {
-      'n/no-extraneous-import': 'off', // Disable for server dependencies
+      'n/no-extraneous-import': 'off',
+      'n/no-missing-import': 'off', // Disable for server dependencies
       'n/no-unsupported-features/node-builtins': 'off',
     },
   },

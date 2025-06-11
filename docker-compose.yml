@@ -1,16 +1,38 @@
-version: "3.9"
+# docker-compose.yml
 services:
   db:
     image: postgres:16-alpine
     container_name: pantrypal-db
-    restart: unless-stopped
+    env_file: .env.local
     environment:
-      POSTGRES_USER: pantrypal
-      POSTGRES_PASSWORD: devpass
-      POSTGRES_DB: pantrypal
+      POSTGRES_DB: pantry
+      POSTGRES_USER: pantryuser
+      POSTGRES_PASSWORD: ${DB_PASS}
     ports:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: pantrypal-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      target: production
+    container_name: pantrypal-app
+    env_file: .env
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+      - redis
+    restart: on-failure
+
 volumes:
   db-data:

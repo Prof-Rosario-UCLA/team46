@@ -6,70 +6,67 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION:     ${{ secrets.GCP_REGION }}
+  REPO:       ${{ secrets.GCP_AR_REPO }}
+  SERVICE:    ${{ secrets.GCP_RUN_SERVICE }}
+  IMAGE_TAG:  ${{ github.sha }}
+
 jobs:
   build-test:
-    name: Build & Test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
+      - run: npm ci
+        name: Install deps
+      - run: npm run lint
+        name: Lint
+      - run: npm run build
+        name: Build
 
   deploy:
-    name: Deploy to Cloud Run
     needs: build-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Authenticate to GCP
+      # 1️⃣ Authenticate to Google Cloud
+      - id: auth
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up gcloud CLI
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ secrets.GCP_PROJECT }}
+      # 2️⃣ Install gcloud + Docker auth for Artifact Registry
+      - uses: google-github-actions/setup-gcloud@v1
+      - run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+        name: Configure Docker auth
 
-      - name: Build & push Docker image
-        run: |
-          IMAGE="gcr.io/${{ secrets.GCP_PROJECT }}/pantrypal:${GITHUB_SHA::8}"
-          gcloud builds submit --tag $IMAGE .
+      # 3️⃣ Build & push the image
+      - run: |
+          set -e
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ env.IMAGE_TAG }}"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV   # share with next step
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+        name: Docker build & push
 
-      - name: Deploy to Cloud Run
-        run: |
-          IMAGE="gcr.io/${{ secrets.GCP_PROJECT }}/pantrypal:${GITHUB_SHA::8}"
-          gcloud run deploy pantrypal \
-            --image $IMAGE \
-            --region us-central1 \
-            --platform managed \
+      # 4️⃣ Deploy to Cloud Run with the *exact* image we just pushed
+      - run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image="$IMAGE" \
+            --region="${{ env.REGION }}" \
+            --platform=managed \
             --allow-unauthenticated \
-            --set-cloudsql-instances ${{ secrets.GCP_SQL_INSTANCE }} \
-            --set-env-vars \
-              DATABASE_URL="postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASS }}@/${{ secrets.DB_NAME }}?host=/cloudsql/${{ secrets.GCP_SQL_INSTANCE }}"
-
-      - name: Show service URL
-        run: |
-          gcloud run services describe pantrypal \
-            --region us-central1 \
-            --format="value(status.url)"
+            --quiet
+        name: Deploy to Cloud Run

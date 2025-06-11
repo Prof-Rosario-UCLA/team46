@@ -52,7 +52,7 @@ jobs:
       - name: Docker login
         run: |
           REGISTRY="${{ env.REGION }}-docker.pkg.dev"
-          echo '${{ secrets.GCP_SA_KEY }}' | docker login -u _json_key --password-stdin "https://$REGISTRY"
+          echo "${{ secrets.GCP_SA_KEY }}" | docker login -u _json_key --password-stdin "https://$REGISTRY"
 
       - name: Docker build & push
         run: |
@@ -69,6 +69,6 @@ jobs:
             --region="${{ env.REGION }}" \
             --platform=managed \
             --allow-unauthenticated \
-            --add-cloudsql-instances="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-db" \
-            --set-env-vars=DATABASE_URL='${{ secrets.DATABASE_URL }}',JWT_SECRET='${{ secrets.JWT_SECRET }}',JWT_EXPIRES='${{ secrets.JWT_EXPIRES }}',REDIS_URL='${{ secrets.REDIS_URL }}',OPENAI_API_KEY='${{ secrets.OPENAI_API_KEY }}' \
+            --add-cloudsql-instances="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-prod-db" \
+            --set-env-vars=DATABASE_URL="${{ secrets.DATABASE_URL }}",OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             --quiet

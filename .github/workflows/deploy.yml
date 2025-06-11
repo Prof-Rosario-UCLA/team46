@@ -2,16 +2,16 @@ name: CI/CD to Cloud Run
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION:     ${{ secrets.GCP_REGION }}
-  REPO:       ${{ secrets.GCP_AR_REPO }}
-  SERVICE:    ${{ secrets.GCP_RUN_SERVICE }}
-  IMAGE_TAG:  ${{ github.sha }}
+  REGION: ${{ secrets.GCP_REGION }}
+  REPO: ${{ secrets.GCP_AR_REPO }}
+  SERVICE: ${{ secrets.GCP_RUN_SERVICE }}
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   build-test:
@@ -25,7 +25,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm ci
 
       - name: Lint
@@ -42,20 +42,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Authenticate gcloud with your SA key (no file-echo needed)
-      - id: auth
+      - name: Authenticate to Google Cloud
+        id: auth
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - uses: google-github-actions/setup-gcloud@v1
 
-      # Configure Docker to use those same gcloud creds for Artifact Registry
-      - name: Configure Docker credential helper
+      - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker --quiet "${{ env.REGION }}-docker.pkg.dev"
 
-      - name: Docker build & push
+      - name: Build and push Docker image
         run: |
           set -e
           IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ env.IMAGE_TAG }}"
@@ -71,8 +70,5 @@ jobs:
             --platform=managed \
             --allow-unauthenticated \
             --add-cloudsql-instances="${{ env.PROJECT_ID }}:${{ env.REGION }}:pantrypal-prod-db" \
-            --set-env-vars=DATABASE_URL="${{ secrets.DATABASE_URL }}",\
-              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}",\
-              JWT_SECRET="${{ secrets.JWT_SECRET }}",\
-              JWT_EXPIRES="${{ secrets.JWT_EXPIRES }}" \
-                          --quiet
+            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }},OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }},JWT_SECRET=${{ secrets.JWT_SECRET }},JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}" \
+            --quiet

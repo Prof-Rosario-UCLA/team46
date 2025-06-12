@@ -5,7 +5,7 @@ Deployed Link(Google Cloud Run):
 
 https://pantrypal-e4psc7htla-uc.a.run.app/
 
-Login Information
+Login Information:
 
-Email: pantryuser@example.com
+Email: pantryuser@example.com \n
 Password: secret123

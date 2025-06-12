@@ -51,13 +51,18 @@ First do Option B(1-3)
 1) Setup Github Actions(deploy.yml in /.github/workflows)
 2) Configure github secrets
     DATABASE_URL=postgresql://pantryuser:test@localhost:5432/pantrypal?host=/cloudsql/team-46-pantrypal:us-central1:pantrypal-prod-db&schema=public
+   
     REDIS_URL=redis://10.233.161.6:6379
+   
     JWT_SECRET=your_jwt_secret
+   
     JWT_EXPIRES="7d"
+   
     OPENAI_API_KEY=your_openai_api_key
-3) Add all files, commit and push to main
-4) Go to github actions window/ should deploy CI/CD
-5) Use Link
+   
+4) Add all files, commit and push to main
+5) Go to github actions window/ should deploy CI/CD
+6) Use Link
 
 
 

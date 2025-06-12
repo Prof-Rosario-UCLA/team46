@@ -27,17 +27,21 @@ Password: secret123
 4) Create .env file in root directory
 
     DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+   
     REDIS_URL=redis://localhost:6379
+   
     JWT_SECRET=your_jwt_secret
+   
     JWT_EXPIRES="7d"
+   
     OPENAI_API_KEY=your_openai_api_key
 
-5) Migrate and Seed Database
+6) Migrate and Seed Database
 
     npx prisma migrate deploy
     npx prisma db seed
 
-6) np run dev
+7) np run dev
 
 
 **Option C: Deploy to Google Cloud Yourself**

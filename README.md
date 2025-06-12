@@ -1,7 +1,7 @@
 Instructions to Run
 
 
-Deployed Link:
+Deployed Link(Google Cloud Run):
 
 https://pantrypal-e4psc7htla-uc.a.run.app/
 

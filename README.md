@@ -7,5 +7,6 @@ https://pantrypal-e4psc7htla-uc.a.run.app/
 
 Login Information:
 
-Email: pantryuser@example.com \n
+Email: pantryuser@example.com 
+
 Password: secret123

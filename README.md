@@ -1,11 +1,9 @@
-How to Run:
+Instructions to Run
 
 
-Open this link:
+Deployed Link:
 
-
-
-Check out the live application here: [Live Site](https://pantrypal-e4psc7htla-uc.a.run.app/)
+https://pantrypal-e4psc7htla-uc.a.run.app/
 
 Login Information:
 

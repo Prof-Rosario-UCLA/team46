@@ -49,10 +49,11 @@ Password: secret123
 First do Option B(1-3)
 
 1) Setup Github Actions(deploy.yml in /.github/workflows)
-2) Configure github secrets
-    DATABASE_URL=postgresql://pantryuser:test@localhost:5432/pantrypal?host=/cloudsql/team-46-pantrypal:us-central1:pantrypal-prod-db&schema=public
-   
-    REDIS_URL=redis://10.233.161.6:6379
+2) Setup REDIS and CloudSQL on Google Cloud
+3) Configure github secrets
+   DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<HOST>:<PORT>/<DB_NAME>?host=/cloudsql/<GCP_INSTANCE_CONNECTION_NAME>&schema=public              
+       
+    REDIS_URL=redis://<REDIS_HOST>:<REDIS_PORT>
    
     JWT_SECRET=your_jwt_secret
    
@@ -60,9 +61,9 @@ First do Option B(1-3)
    
     OPENAI_API_KEY=your_openai_api_key
    
-4) Add all files, commit and push to main
-5) Go to github actions window/ should deploy CI/CD
-6) Use Link
+5) Add all files, commit and push to main
+6) Go to github actions window/ should deploy CI/CD
+7) Use Link
 
 
 
